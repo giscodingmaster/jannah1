@@ -3,6 +3,7 @@ import {
   getFirestore,
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   onSnapshot,
@@ -27,7 +28,6 @@ export const db = getFirestore(app);
 // Firestore Collections
 export const participantsCol = collection(db, 'participants');
 export const attendanceCol = collection(db, 'attendance');
-export const settingsDoc = doc(db, 'settings', 'config');
 
 // Realtime subscription helper for participants
 export function subscribeParticipants(
@@ -41,8 +41,7 @@ export function subscribeParticipants(
       snapshot.forEach((docSnap) => {
         list.push(docSnap.data() as Participant);
       });
-      // Sort by id or createdAt
-      list.sort((a, b) => a.id.localeCompare(b.id));
+      list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
       onUpdate(list);
     },
     (err) => {
@@ -73,15 +72,30 @@ export function subscribeAttendance(
   );
 }
 
+// Fetch single participant from Firestore
+export async function getParticipantFromCloud(id: string): Promise<Participant | null> {
+  try {
+    const snap = await getDoc(doc(db, 'participants', id.trim().toUpperCase()));
+    if (snap.exists()) {
+      return snap.data() as Participant;
+    }
+  } catch (e) {
+    console.error('getParticipantFromCloud error:', e);
+  }
+  return null;
+}
+
 // Save or Update a Participant
 export async function saveParticipantToCloud(participant: Participant) {
-  const pRef = doc(db, 'participants', participant.id);
-  await setDoc(pRef, participant, { merge: true });
+  const cleanId = participant.id.trim().toUpperCase();
+  const pRef = doc(db, 'participants', cleanId);
+  await setDoc(pRef, { ...participant, id: cleanId }, { merge: true });
 }
 
 // Delete a Participant
 export async function deleteParticipantFromCloud(participantId: string) {
-  const pRef = doc(db, 'participants', participantId);
+  const cleanId = participantId.trim().toUpperCase();
+  const pRef = doc(db, 'participants', cleanId);
   await deleteDoc(pRef);
 }
 
@@ -101,8 +115,9 @@ export async function removeAttendanceFromCloud(recordId: string) {
 export async function batchAddParticipantsToCloud(participants: Participant[]) {
   const batch = writeBatch(db);
   participants.forEach((p) => {
-    const pRef = doc(db, 'participants', p.id);
-    batch.set(pRef, p, { merge: true });
+    const cleanId = p.id.trim().toUpperCase();
+    const pRef = doc(db, 'participants', cleanId);
+    batch.set(pRef, { ...p, id: cleanId }, { merge: true });
   });
   await batch.commit();
 }

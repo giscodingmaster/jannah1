@@ -21,6 +21,7 @@ import {
 import {
   subscribeParticipants,
   subscribeAttendance,
+  getParticipantFromCloud,
   saveParticipantToCloud,
   deleteParticipantFromCloud,
   recordAttendanceToCloud,
@@ -107,13 +108,30 @@ export function App() {
     participantId: string,
     ramadanDay: number
   ): Promise<{ success: boolean; message: string; participant?: Participant }> => {
-    const p = participants.find((item) => item.id === participantId);
+    const cleanId = participantId.trim().toUpperCase();
+    let p = participants.find((item) => item.id.trim().toUpperCase() === cleanId);
+
+    // Fallback: Check Firestore directly in case state hadn't updated yet
     if (!p) {
-      return { success: false, message: `لم يتم العثور على المتسابق (${participantId})` };
+      const cloudP = await getParticipantFromCloud(cleanId);
+      if (cloudP) {
+        p = cloudP;
+        setParticipants((prev) => {
+          if (prev.some((x) => x.id.toUpperCase() === cleanId)) return prev;
+          return [...prev, cloudP];
+        });
+      }
+    }
+
+    if (!p) {
+      return {
+        success: false,
+        message: `لم يتم العثور على (${cleanId}). تأكد من إضافته أولاً في تبويب "المشاركون".`,
+      };
     }
 
     const already = attendance.some(
-      (a) => a.participantId === participantId && a.ramadanDay === ramadanDay
+      (a) => a.participantId.trim().toUpperCase() === cleanId && a.ramadanDay === ramadanDay
     );
 
     if (already) {
@@ -126,7 +144,7 @@ export function App() {
 
     const newRec: AttendanceRecord = {
       id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      participantId,
+      participantId: p.id,
       ramadanDay,
       date: new Date().toISOString().split('T')[0],
       timestamp: new Date().toISOString(),
