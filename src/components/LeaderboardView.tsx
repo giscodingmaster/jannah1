@@ -1,20 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { Trophy, Download, Search, Medal, Sparkles } from 'lucide-react';
 import { Participant, AttendanceRecord } from '../types';
-import { getStoredParticipants, getStoredAttendance } from '../utils/storage';
 
 interface LeaderboardViewProps {
+  participants: Participant[];
+  attendance: AttendanceRecord[];
   totalNights: number;
 }
 
-export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights }) => {
+export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
+  participants,
+  attendance,
+  totalNights,
+}) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('الجميع');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const participants = useMemo(() => getStoredParticipants(), []);
-  const attendance = useMemo(() => getStoredAttendance(), []);
-
-  // Aggregate stats per participant based on Taraweeh nights
   const stats = useMemo(() => {
     return participants.map((p) => {
       const records = attendance.filter((a) => a.participantId === p.id && a.ramadanDay <= totalNights);
@@ -97,10 +98,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
         </button>
       </div>
 
-      {/* Top 3 Podium (Apple Card Style) */}
+      {/* Top 3 Podium */}
       {top3.length > 0 && (
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {/* 2nd Place */}
           {top3[1] && (
             <div className="ios-glass-card rounded-2xl p-3 flex flex-col items-center text-center">
               <span className="w-6 h-6 rounded-full bg-slate-300 text-slate-900 font-bold text-xs flex items-center justify-center mb-1">
@@ -114,7 +114,6 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
             </div>
           )}
 
-          {/* 1st Place */}
           {top3[0] && (
             <div className="ios-glass-card rounded-2xl p-3.5 flex flex-col items-center text-center border-[#f5d77f]/30 bg-gradient-to-b from-[#f5d77f]/10 to-transparent">
               <span className="w-7 h-7 rounded-full apple-gold-bg text-black font-black text-sm flex items-center justify-center mb-1 shadow-lg">
@@ -128,7 +127,6 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
             </div>
           )}
 
-          {/* 3rd Place */}
           {top3[2] && (
             <div className="ios-glass-card rounded-2xl p-3 flex flex-col items-center text-center">
               <span className="w-6 h-6 rounded-full bg-amber-700 text-amber-100 font-bold text-xs flex items-center justify-center mb-1">
@@ -146,7 +144,6 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
 
       {/* Filter Chips & Search Bar */}
       <div className="flex items-center gap-2 mb-3">
-        {/* Category Pills */}
         <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-full border border-white/5 overflow-x-auto no-scrollbar">
           {['الجميع', 'براعم', 'أشبال', 'شباب'].map((cat) => (
             <button
@@ -161,7 +158,6 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
           ))}
         </div>
 
-        {/* Search */}
         <div className="relative flex-1">
           <input
             type="text"
@@ -173,7 +169,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ totalNights })
         </div>
       </div>
 
-      {/* Grouped List (iOS Table Style) */}
+      {/* Table List */}
       <div className="rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] divide-y divide-white/5">
         {filtered.map((p, idx) => (
           <div key={p.id} className="p-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors">

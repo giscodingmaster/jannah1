@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Printer, Moon } from 'lucide-react';
 import { Participant } from '../types';
-import { getStoredParticipants } from '../utils/storage';
 
 interface SingleCardProps {
   participant: Participant;
@@ -78,16 +77,18 @@ const SingleCard: React.FC<SingleCardProps> = React.memo(({ participant }) => {
   );
 });
 
-export const CardsView: React.FC = () => {
-  const participants = useMemo(() => getStoredParticipants(), []);
+interface CardsViewProps {
+  participants: Participant[];
+}
 
+export const CardsView: React.FC<CardsViewProps> = ({ participants }) => {
   return (
     <div className="max-w-2xl mx-auto px-4 pt-2 pb-24">
       {/* Action Bar */}
       <div className="print:hidden flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight">بطاقات المصلين</h2>
-          <p className="text-xs text-white/40">جاهزة للطباعة والقص للشباب</p>
+          <p className="text-xs text-white/40">جاهزة للطباعة والقص للشباب ({participants.length} بطاقة)</p>
         </div>
         <button
           onClick={() => window.print()}

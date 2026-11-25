@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Moon, Smartphone, SlidersHorizontal } from 'lucide-react';
+import { Moon, Smartphone, SlidersHorizontal, Cloud, CloudOff } from 'lucide-react';
 import { InstallModal } from './InstallModal';
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   setActiveRamadanDay: (day: number) => void;
   totalNights: number;
   setTotalNights: (nights: number) => void;
+  isCloudConnected?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveRamadanDay,
   totalNights,
   setTotalNights,
+  isCloudConnected,
 }) => {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -27,9 +29,16 @@ export const Header: React.FC<HeaderProps> = ({
             <Moon className="w-4 h-4 fill-current" />
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight text-white leading-none">
-              فُرسَانُ التَّرَاوِيح
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-bold tracking-tight text-white leading-none">
+                فُرسَانُ التَّرَاوِيح
+              </h1>
+              {isCloudConnected ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" title="متصل بالسحاب (مزامنة مباشرة)" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-400" title="تخزين محلي" />
+              )}
+            </div>
             <p className="text-[10px] text-white/40 mt-0.5">مسجد التقوى</p>
           </div>
         </div>

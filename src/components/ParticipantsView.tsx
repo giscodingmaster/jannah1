@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { UserPlus, Trash2, Download, Upload, Users, X, RotateCcw, FileText, Check } from 'lucide-react';
-import { Participant } from '../types';
-import {
-  getStoredParticipants,
-  saveParticipants,
-  getStoredAttendance,
-  saveAttendance,
-  clearAllAttendance,
-  clearAllParticipants,
-} from '../utils/storage';
+import { Participant, AttendanceRecord } from '../types';
 
-export const ParticipantsView: React.FC = () => {
-  const [participants, setParticipants] = useState<Participant[]>(getStoredParticipants());
+interface ParticipantsViewProps {
+  participants: Participant[];
+  attendance: AttendanceRecord[];
+  onAddParticipant: (p: Participant) => Promise<void>;
+  onBulkAdd: (entries: Participant[]) => Promise<void>;
+  onDeleteParticipant: (id: string) => Promise<void>;
+  onClearAttendance: () => Promise<void>;
+  onClearAll: () => Promise<void>;
+}
+
+export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
+  participants,
+  attendance,
+  onAddParticipant,
+  onBulkAdd,
+  onDeleteParticipant,
+  onClearAttendance,
+  onClearAll,
+}) => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'براعم' | 'أشبال' | 'شباب'>('أشبال');
   const [guardianPhone, setGuardianPhone] = useState('');
@@ -26,7 +35,7 @@ export const ParticipantsView: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
@@ -43,17 +52,15 @@ export const ParticipantsView: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [...participants, newParticipant];
-    setParticipants(updated);
-    saveParticipants(updated);
+    await onAddParticipant(newParticipant);
 
     setName('');
     setGuardianPhone('');
     setShowAddForm(false);
-    showToast(`تمت إضافة ${newParticipant.name} بنجاح`);
+    showToast(`تمت إضافة ${newParticipant.name} ومزامنته سحابياً`);
   };
 
-  const handleBulkAdd = (e: React.FormEvent) => {
+  const handleBulkAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const lines = bulkText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) return;
@@ -72,45 +79,37 @@ export const ParticipantsView: React.FC = () => {
       };
     });
 
-    const updated = [...participants, ...newEntries];
-    setParticipants(updated);
-    saveParticipants(updated);
+    await onBulkAdd(newEntries);
     setBulkText('');
     setShowBulkModal(false);
-    showToast(`تمت إضافة ${newEntries.length} متسابق دفعة واحدة وتوليد بطاقاتهم`);
+    showToast(`تمت إضافة ${newEntries.length} متسابق دفعة واحدة ومزامنتهم سحابياً`);
   };
 
-  const handleDelete = (id: string, pName: string) => {
-    if (window.confirm(`حذف المتسابق (${pName}) وسجلاته؟`)) {
-      const updated = participants.filter((p) => p.id !== id);
-      setParticipants(updated);
-      saveParticipants(updated);
-
-      const attendance = getStoredAttendance().filter((a) => a.participantId !== id);
-      saveAttendance(attendance);
+  const handleDelete = async (id: string, pName: string) => {
+    if (window.confirm(`حذف المتسابق (${pName}) وسجلاته نهائياً من السحاب وجميع الأجهزة؟`)) {
+      await onDeleteParticipant(id);
       showToast(`تم حذف ${pName}`);
     }
   };
 
-  const handleClearAttendance = () => {
-    if (window.confirm('هل تريد تصفير سجلات الحضور لجميع الأيام لتجربة المسح من البداية؟ (لن يتم حذف أسماء المتسابقين)')) {
-      clearAllAttendance();
-      showToast('تم تصفير سجلات الحضور بنجاح، يمكنك تجربة المسح الآن');
+  const handleClearAttendance = async () => {
+    if (window.confirm('هل تريد تصفير سجلات الحضور في السحاب لجميع الأيام لتجربة المسح من البداية؟ (لن يتم حذف أسماء المتسابقين)')) {
+      await onClearAttendance();
+      showToast('تم تصفير سجلات الحضور، يمكنك تجربة المسح الآن');
     }
   };
 
-  const handleClearAll = () => {
-    if (window.confirm('هل تريد حذف جميع المتسابقين التجريبيين وسجلاتهم للبدء ببيانات جديدة تماماً للمسجد؟')) {
-      clearAllParticipants();
-      setParticipants([]);
-      showToast('تم إفراغ القائمة تماماً، يمكنك الآن إدخال أسماء المسجد');
+  const handleClearAll = async () => {
+    if (window.confirm('هل تريد حذف جميع المتسابقين التجريبيين وسجلاتهم من السحاب للبدء ببيانات جديدة تماماً للمسجد؟')) {
+      await onClearAll();
+      showToast('تم إفراغ قاعدة البيانات، يمكنك الآن إدخال أسماء المسجد');
     }
   };
 
   const handleExportBackup = () => {
     const data = {
-      participants: getStoredParticipants(),
-      attendance: getStoredAttendance(),
+      participants,
+      attendance,
       exportedAt: new Date().toISOString(),
     };
     const jsonStr = JSON.stringify(data, null, 2);
@@ -123,23 +122,18 @@ export const ParticipantsView: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (Array.isArray(parsed.participants)) {
-          saveParticipants(parsed.participants);
-          setParticipants(parsed.participants);
+          await onBulkAdd(parsed.participants);
         }
-        if (Array.isArray(parsed.attendance)) {
-          saveAttendance(parsed.attendance);
-        }
-        showToast('تمت استعادة النسخة الاحتياطية بنجاح');
-        setTimeout(() => window.location.reload(), 800);
+        showToast('تمت استعادة ومزامنة النسخة الاحتياطية بنجاح');
       } catch (err) {
         alert('ملف غير صالح');
       }
@@ -161,7 +155,7 @@ export const ParticipantsView: React.FC = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight">إدارة الأسماء والبطاقات</h2>
-          <p className="text-xs text-white/40">{participants.length} مسجل بالمسابقة</p>
+          <p className="text-xs text-white/40">{participants.length} مسجل بالمسابقة (مزامنة سحابية)</p>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -290,14 +284,14 @@ export const ParticipantsView: React.FC = () => {
                 type="submit"
                 className="flex-1 py-2.5 rounded-xl apple-gold-bg text-black font-bold text-xs active:scale-95 transition-all cursor-pointer"
               >
-                حفظ وتوليد بطاقة QR
+                حفظ ومزامنة سحابية
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Bulk Add Modal (Paste names) */}
+      {/* Bulk Add Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
           <form
@@ -350,7 +344,7 @@ export const ParticipantsView: React.FC = () => {
                 type="submit"
                 className="flex-1 py-2.5 rounded-xl apple-gold-bg text-black font-bold text-xs active:scale-95 transition-all cursor-pointer"
               >
-                توليد البطاقات والأكواد للجميع
+                توليد ومزامنة الجميع سحابياً
               </button>
             </div>
           </form>

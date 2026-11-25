@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import confetti from 'canvas-confetti';
-import { Camera, CheckCircle2, AlertCircle, Search, X, Users, Sparkles } from 'lucide-react';
-import { recordTaraweehAttendance, getStoredParticipants, getStoredAttendance } from '../utils/storage';
+import { Camera, CheckCircle2, AlertCircle, Search, X, Users } from 'lucide-react';
+import { Participant, AttendanceRecord } from '../types';
 import { playSuccessChime } from '../utils/audio';
 
 interface ScannerViewProps {
   activeRamadanDay: number;
+  participants: Participant[];
+  attendance: AttendanceRecord[];
+  onRecordCode: (participantId: string, day: number) => Promise<{ success: boolean; message: string; participant?: Participant }>;
   onDoneForPrayer: () => void;
 }
 
 export const ScannerView: React.FC<ScannerViewProps> = ({
   activeRamadanDay,
+  participants,
+  attendance,
+  onRecordCode,
   onDoneForPrayer,
 }) => {
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -21,7 +27,6 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     message: string;
   } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [sessionCount, setSessionCount] = useState<number>(0);
   const [showManualSheet, setShowManualSheet] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -29,15 +34,9 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
   const lastScannedCodeRef = useRef<string>('');
   const lastScanTimestampRef = useRef<number>(0);
 
-  // Compute how many attendees were recorded for this Taraweeh night
-  useEffect(() => {
-    const attendance = getStoredAttendance();
-    const count = attendance.filter(a => a.ramadanDay === activeRamadanDay).length;
-    setSessionCount(count);
-  }, [activeRamadanDay, lastScanned]);
+  const sessionCount = attendance.filter(a => a.ramadanDay === activeRamadanDay).length;
 
-  // Handle scanned code
-  const processCode = (rawCode: string) => {
+  const processCode = async (rawCode: string) => {
     const now = Date.now();
     const trimmed = rawCode.trim();
 
@@ -58,7 +57,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       // Raw string
     }
 
-    const result = recordTaraweehAttendance(participantId, activeRamadanDay);
+    const result = await onRecordCode(participantId, activeRamadanDay);
 
     if (result.success) {
       playSuccessChime();
@@ -82,13 +81,11 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       });
     }
 
-    // Auto-dismiss notification after 3 seconds
     setTimeout(() => {
       setLastScanned(null);
     }, 3200);
   };
 
-  // Start scanner
   const startCamera = async () => {
     setCameraError(null);
     try {
@@ -119,7 +116,6 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     }
   };
 
-  // Stop scanner
   const stopCamera = async () => {
     if (scannerRef.current && isScanning) {
       try {
@@ -139,14 +135,13 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     };
   }, []);
 
-  const participants = getStoredParticipants();
   const filteredParticipants = participants.filter(p =>
     p.name.includes(searchQuery) || p.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="max-w-md mx-auto px-4 pt-2 pb-24 flex flex-col items-center">
-      {/* Dynamic Island / Floating Scanned Alert */}
+      {/* Dynamic Island Alert */}
       {lastScanned && (
         <div
           className={`fixed top-14 z-50 px-4 py-2.5 rounded-full ios-glass shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-top duration-300 ${
@@ -181,7 +176,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       <div className="w-full relative aspect-square max-w-[340px] rounded-[36px] overflow-hidden bg-black/80 border border-white/10 shadow-2xl flex items-center justify-center">
         <div id="qr-reader" className="w-full h-full object-cover" />
 
-        {/* Reticle Overlay when scanning */}
+        {/* Reticle Overlay */}
         {isScanning && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="w-56 h-56 rounded-3xl border-2 border-[#f5d77f]/40 relative">
@@ -213,7 +208,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
         </p>
       )}
 
-      {/* Action Buttons (Apple Pill Style) */}
+      {/* Action Buttons */}
       <div className="w-full max-w-[340px] flex flex-col gap-2.5 mt-5">
         {!isScanning ? (
           <button
@@ -250,14 +245,12 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
         </button>
       </div>
 
-      {/* iOS Bottom Sheet Modal for Manual Check-in */}
+      {/* iOS Bottom Sheet Modal */}
       {showManualSheet && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-md max-h-[80vh] rounded-t-[32px] sm:rounded-[32px] bg-[#121a17] border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
-            {/* Sheet Handle */}
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2" />
 
-            {/* Header */}
             <div className="px-5 py-2 flex items-center justify-between border-b border-white/5">
               <h3 className="text-sm font-bold text-white">التحضير اليدوي</h3>
               <button
@@ -268,7 +261,6 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
               </button>
             </div>
 
-            {/* Search Box */}
             <div className="p-3">
               <div className="relative">
                 <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
@@ -282,10 +274,9 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
               </div>
             </div>
 
-            {/* Participants List */}
             <div className="overflow-y-auto p-3 space-y-1.5 flex-1 max-h-[45vh]">
               {filteredParticipants.map((p) => {
-                const isPresent = getStoredAttendance().some(
+                const isPresent = attendance.some(
                   a => a.participantId === p.id && a.ramadanDay === activeRamadanDay
                 );
 

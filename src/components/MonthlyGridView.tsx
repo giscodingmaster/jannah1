@@ -1,42 +1,25 @@
-import React, { useState } from 'react';
-import { Download, Calendar } from 'lucide-react';
+import React from 'react';
+import { Download } from 'lucide-react';
 import { Participant, AttendanceRecord } from '../types';
-import {
-  getStoredParticipants,
-  getStoredAttendance,
-  recordTaraweehAttendance,
-  removeTaraweehAttendance,
-} from '../utils/storage';
 
 interface MonthlyGridViewProps {
+  participants: Participant[];
+  attendance: AttendanceRecord[];
   activeRamadanDay: number;
   setActiveRamadanDay: (day: number) => void;
   totalNights: number;
+  onToggleAttendance: (participantId: string, day: number) => Promise<void>;
 }
 
 export const MonthlyGridView: React.FC<MonthlyGridViewProps> = ({
+  participants,
+  attendance,
   activeRamadanDay,
   setActiveRamadanDay,
   totalNights,
+  onToggleAttendance,
 }) => {
-  const [participants] = useState<Participant[]>(getStoredParticipants());
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(getStoredAttendance());
-
   const days = Array.from({ length: totalNights }, (_, i) => i + 1);
-
-  const toggleDayAttendance = (participantId: string, day: number) => {
-    const isPresent = attendance.some(
-      (a) => a.participantId === participantId && a.ramadanDay === day
-    );
-
-    if (isPresent) {
-      removeTaraweehAttendance(participantId, day);
-    } else {
-      recordTaraweehAttendance(participantId, day);
-    }
-
-    setAttendance(getStoredAttendance());
-  };
 
   const exportGridCsv = () => {
     const headers = ['الكود', 'الاسم', 'الفئة', ...days.map((d) => `ليلة ${d}`), 'إجمالي الحضور', 'النسبة المئوية'];
@@ -118,7 +101,7 @@ export const MonthlyGridView: React.FC<MonthlyGridViewProps> = ({
                       return (
                         <td key={day} className="py-1 px-0.5 text-center">
                           <button
-                            onClick={() => toggleDayAttendance(p.id, day)}
+                            onClick={() => onToggleAttendance(p.id, day)}
                             className={`w-6 h-6 rounded-md flex items-center justify-center mx-auto text-[10px] font-bold transition-all cursor-pointer ${
                               isPresent
                                 ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
