@@ -17,22 +17,12 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
 ];
 
 export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
-  // Night 1 (ليلة الرؤية قبل أول صيام)
+  // Night 1
   { id: 'rec-1-101', participantId: 'RMD-101', ramadanDay: 1, date: '2026-03-01', timestamp: new Date().toISOString() },
   { id: 'rec-1-102', participantId: 'RMD-102', ramadanDay: 1, date: '2026-03-01', timestamp: new Date().toISOString() },
   { id: 'rec-1-103', participantId: 'RMD-103', ramadanDay: 1, date: '2026-03-01', timestamp: new Date().toISOString() },
   { id: 'rec-1-104', participantId: 'RMD-104', ramadanDay: 1, date: '2026-03-01', timestamp: new Date().toISOString() },
   { id: 'rec-1-105', participantId: 'RMD-105', ramadanDay: 1, date: '2026-03-01', timestamp: new Date().toISOString() },
-  // Night 2
-  { id: 'rec-2-101', participantId: 'RMD-101', ramadanDay: 2, date: '2026-03-02', timestamp: new Date().toISOString() },
-  { id: 'rec-2-102', participantId: 'RMD-102', ramadanDay: 2, date: '2026-03-02', timestamp: new Date().toISOString() },
-  { id: 'rec-2-103', participantId: 'RMD-103', ramadanDay: 2, date: '2026-03-02', timestamp: new Date().toISOString() },
-  { id: 'rec-2-106', participantId: 'RMD-106', ramadanDay: 2, date: '2026-03-02', timestamp: new Date().toISOString() },
-  // Night 3
-  { id: 'rec-3-101', participantId: 'RMD-101', ramadanDay: 3, date: '2026-03-03', timestamp: new Date().toISOString() },
-  { id: 'rec-3-102', participantId: 'RMD-102', ramadanDay: 3, date: '2026-03-03', timestamp: new Date().toISOString() },
-  { id: 'rec-3-104', participantId: 'RMD-104', ramadanDay: 3, date: '2026-03-03', timestamp: new Date().toISOString() },
-  { id: 'rec-3-107', participantId: 'RMD-107', ramadanDay: 3, date: '2026-03-03', timestamp: new Date().toISOString() },
 ];
 
 export function getStoredParticipants(): Participant[] {
@@ -67,6 +57,15 @@ export function getStoredAttendance(): AttendanceRecord[] {
 
 export function saveAttendance(attendance: AttendanceRecord[]) {
   localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(attendance));
+}
+
+export function clearAllAttendance() {
+  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify([]));
+}
+
+export function clearAllParticipants() {
+  localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify([]));
+  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify([]));
 }
 
 export function getActiveRamadanDay(): number {
@@ -124,7 +123,7 @@ export function recordTaraweehAttendance(
   saveAttendance(attendance);
 
   const nightLabel = ramadanDay === 1
-    ? 'الليلة 1 من رمضان (ليلة الرؤية - تسبق أول صيام)'
+    ? 'الليلة 1 من رمضان (ليلة الرؤية)'
     : `الليلة ${ramadanDay} من رمضان`;
 
   return {
