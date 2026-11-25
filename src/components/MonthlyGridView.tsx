@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Sparkles, Moon, Download, Info } from 'lucide-react';
+import { Download, Calendar } from 'lucide-react';
 import { Participant, AttendanceRecord } from '../types';
 import {
   getStoredParticipants,
@@ -38,7 +38,6 @@ export const MonthlyGridView: React.FC<MonthlyGridViewProps> = ({
     setAttendance(getStoredAttendance());
   };
 
-  // Export full grid as CSV
   const exportGridCsv = () => {
     const headers = ['الكود', 'الاسم', 'الفئة', ...days.map((d) => `ليلة ${d}`), 'إجمالي الحضور', 'النسبة المئوية'];
     const rows = participants.map((p) => {
@@ -54,99 +53,77 @@ export const MonthlyGridView: React.FC<MonthlyGridViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `كشف_تراويح_رمضان_${totalNights}_ليلة.csv`);
+    link.setAttribute('download', `سجل_التراويح_${totalNights}_ليلة.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* Top Banner */}
-      <div className="p-4 rounded-2xl bg-[#071916] border border-[#d4af37]/30 shadow-lg mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="max-w-4xl mx-auto px-4 pt-2 pb-24">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold font-kufi text-[#fef08a] flex items-center gap-2">
-            <Moon className="w-5 h-5 text-[#d4af37]" />
-            سجل صلاة التراويح لليالي شهر رمضان ({totalNights} ليلة)
-          </h2>
-          <p className="text-xs text-[#94a3b8] mt-1">
-            <strong>تذكير:</strong> الليلة 1 هي ليلة الرؤية (مساء آخر يوم شعبان قبل صيام اليوم الأول) • انقر على أي خلية للتحضير أو الإلغاء فوراً.
-          </p>
+          <h2 className="text-lg font-bold text-white tracking-tight">سجل الليالي</h2>
+          <p className="text-xs text-white/40">انقر على الخلية للتحضير أو الإلغاء</p>
         </div>
-
         <button
           onClick={exportGridCsv}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#6ee7b7] border border-[#10b981]/40 text-xs font-bold transition-all shadow-md cursor-pointer"
+          className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white/80 transition-all flex items-center gap-1.5 text-xs cursor-pointer"
         >
-          <Download className="w-4 h-4" />
-          <span>تصدير كشف الـ {totalNights} ليلة (Excel)</span>
+          <Download className="w-3.5 h-3.5" />
+          <span>تصدير إكسل</span>
         </button>
       </div>
 
-      {/* Grid Table */}
-      <div className="rounded-2xl overflow-hidden border border-[#d4af37]/20 bg-[#071916] shadow-xl">
-        <div className="overflow-x-auto">
+      {/* Clean Grid Table */}
+      <div className="rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03]">
+        <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-right text-xs">
-            <thead className="bg-[#0d2a25] text-[#fef08a] border-b border-[#d4af37]/20 font-bold">
+            <thead className="bg-white/[0.04] text-white/70 border-b border-white/10 font-medium">
               <tr>
-                <th className="py-3 px-3 sticky right-0 bg-[#0d2a25] z-20 shadow-md">المتسابق</th>
-                <th className="py-3 px-2 text-center">الفئة</th>
+                <th className="py-2.5 px-3 sticky right-0 bg-[#0f1412] z-10">المتسابق</th>
                 {days.map((d) => (
                   <th
                     key={d}
                     onClick={() => setActiveRamadanDay(d)}
-                    className={`py-2 px-1 text-center min-w-[32px] cursor-pointer transition-colors ${
-                      d === activeRamadanDay
-                        ? 'bg-[#d4af37] text-[#061412] font-black'
-                        : 'hover:bg-[#10b981]/20'
+                    className={`py-2 px-1 text-center min-w-[30px] cursor-pointer transition-colors ${
+                      d === activeRamadanDay ? 'text-[#f5d77f] font-bold bg-[#f5d77f]/10' : 'hover:text-white'
                     }`}
-                    title={d === 1 ? 'الليلة 1 (ليلة الرؤية - تسبق أول صيام)' : `الليلة ${d} من رمضان`}
                   >
-                    <span>{d}</span>
+                    {d}
                   </th>
                 ))}
-                <th className="py-3 px-3 text-center sticky left-0 bg-[#0d2a25] z-20 shadow-md">المجموع</th>
+                <th className="py-2.5 px-3 text-center sticky left-0 bg-[#0f1412] z-10">المجموع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#d4af37]/10 text-[#cbd5e1]">
+            <tbody className="divide-y divide-white/5 text-white/80">
               {participants.map((p) => {
                 const totalAttended = attendance.filter(
                   (a) => a.participantId === p.id && a.ramadanDay <= totalNights
                 ).length;
-                const percentage = Math.round((totalAttended / totalNights) * 100);
 
                 return (
-                  <tr key={p.id} className="hover:bg-[#10b981]/5 transition-colors">
-                    <td className="py-3 px-3 font-semibold text-[#f8fafc] sticky right-0 bg-[#071916] z-10 whitespace-nowrap">
-                      <div>{p.name}</div>
-                      <span className="text-[10px] text-[#94a3b8] font-mono">{p.id}</span>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-[#cbd5e1] whitespace-nowrap">
-                        {p.category}
-                      </span>
+                  <tr key={p.id} className="hover:bg-white/[0.02]">
+                    <td className="py-2.5 px-3 sticky right-0 bg-[#070b09] z-10 whitespace-nowrap">
+                      <span className="font-semibold text-white block">{p.name}</span>
+                      <span className="text-[10px] text-white/40">{p.category}</span>
                     </td>
 
-                    {/* Nights Cells */}
                     {days.map((day) => {
                       const isPresent = attendance.some(
                         (a) => a.participantId === p.id && a.ramadanDay === day
                       );
 
                       return (
-                        <td key={day} className="py-2 px-1 text-center">
+                        <td key={day} className="py-1 px-0.5 text-center">
                           <button
                             onClick={() => toggleDayAttendance(p.id, day)}
-                            className={`w-7 h-7 rounded-md flex items-center justify-center mx-auto text-[11px] font-bold transition-all cursor-pointer ${
+                            className={`w-6 h-6 rounded-md flex items-center justify-center mx-auto text-[10px] font-bold transition-all cursor-pointer ${
                               isPresent
-                                ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 shadow-sm'
-                                : 'bg-[#061412] text-slate-700 border border-slate-900 hover:border-[#d4af37]/30 hover:text-slate-400'
+                                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                                : 'text-white/15 hover:text-white/40'
                             }`}
-                            title={
-                              isPresent
-                                ? `حاضر تراويح الليلة ${day} (اضغط للإلغاء)`
-                                : `غير مسجل في الليلة ${day} (اضغط للتحضير)`
-                            }
                           >
                             {isPresent ? '✓' : '·'}
                           </button>
@@ -154,31 +131,13 @@ export const MonthlyGridView: React.FC<MonthlyGridViewProps> = ({
                       );
                     })}
 
-                    {/* Total & Percentage */}
-                    <td className="py-3 px-3 text-center sticky left-0 bg-[#071916] z-10 whitespace-nowrap">
-                      <div className="font-black text-sm text-[#fef08a]">{totalAttended} / {totalNights}</div>
-                      <div className="text-[10px] text-[#6ee7b7]">{percentage}%</div>
+                    <td className="py-2.5 px-3 text-center sticky left-0 bg-[#070b09] z-10 whitespace-nowrap font-bold text-white text-xs">
+                      {totalAttended}/{totalNights}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-            {/* Summary Footer Row */}
-            <tfoot className="bg-[#0d2a25]/80 font-bold text-[#fef08a] border-t border-[#d4af37]/20">
-              <tr>
-                <td className="py-3 px-3 sticky right-0 bg-[#0d2a25] z-20">إجمالي حضور الليلة:</td>
-                <td className="py-3 px-2 text-center">-</td>
-                {days.map((day) => {
-                  const count = attendance.filter((a) => a.ramadanDay === day).length;
-                  return (
-                    <td key={day} className="py-2 px-1 text-center font-mono text-[11px]">
-                      {count > 0 ? count : '0'}
-                    </td>
-                  );
-                })}
-                <td className="py-3 px-3 text-center sticky left-0 bg-[#0d2a25] z-20">-</td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>

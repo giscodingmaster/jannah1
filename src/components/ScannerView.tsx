@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import confetti from 'canvas-confetti';
-import { Camera, CheckCircle2, AlertCircle, ShieldCheck, UserCheck, Moon, ArrowRight } from 'lucide-react';
+import { Camera, CheckCircle2, AlertCircle, Search, X, Users, Sparkles } from 'lucide-react';
 import { recordTaraweehAttendance, getStoredParticipants, getStoredAttendance } from '../utils/storage';
 import { playSuccessChime } from '../utils/audio';
 
@@ -19,10 +19,11 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     success: boolean;
     name?: string;
     message: string;
-    time: string;
   } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [sessionCount, setSessionCount] = useState<number>(0);
+  const [showManualSheet, setShowManualSheet] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScannedCodeRef = useRef<string>('');
@@ -40,8 +41,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     const now = Date.now();
     const trimmed = rawCode.trim();
 
-    // Prevent duplicate triggers of the exact same code within 3 seconds
-    if (trimmed === lastScannedCodeRef.current && now - lastScanTimestampRef.current < 3000) {
+    if (trimmed === lastScannedCodeRef.current && now - lastScanTimestampRef.current < 2500) {
       return;
     }
 
@@ -55,7 +55,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
         if (parsed.id) participantId = parsed.id;
       }
     } catch {
-      // Keep trimmed string
+      // Raw string
     }
 
     const result = recordTaraweehAttendance(participantId, activeRamadanDay);
@@ -63,26 +63,29 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
     if (result.success) {
       playSuccessChime();
       confetti({
-        particleCount: 40,
-        spread: 60,
-        origin: { y: 0.8 },
-        colors: ['#d4af37', '#10b981', '#fef08a'],
+        particleCount: 30,
+        spread: 50,
+        origin: { y: 0.75 },
+        colors: ['#f5d77f', '#34d399', '#ffffff'],
       });
 
       setLastScanned({
         success: true,
         name: result.participant?.name,
-        message: result.message,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        message: `تم تسجيل الحضور في ليلة ${activeRamadanDay}`,
       });
     } else {
       setLastScanned({
         success: false,
         name: result.participant?.name,
         message: result.message,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
       });
     }
+
+    // Auto-dismiss notification after 3 seconds
+    setTimeout(() => {
+      setLastScanned(null);
+    }, 3200);
   };
 
   // Start scanner
@@ -94,8 +97,8 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       }
 
       const config = {
-        fps: 15,
-        qrbox: { width: 250, height: 250 },
+        fps: 20,
+        qrbox: { width: 230, height: 230 },
         aspectRatio: 1.0,
       };
 
@@ -111,7 +114,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       setIsScanning(true);
     } catch (err: unknown) {
       console.error('Camera start error:', err);
-      setCameraError('تعذر فتح الكاميرا مباشرة. تأكد من إعطاء إذن الكاميرا، أو استخدم التحضير اليدوي السريع أدناه.');
+      setCameraError('يرجى السماح بصلاحية الكاميرا في المتصفح، أو استخدم التحضير اليدوي.');
       setIsScanning(false);
     }
   };
@@ -137,147 +140,151 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
   }, []);
 
   const participants = getStoredParticipants();
+  const filteredParticipants = participants.filter(p =>
+    p.name.includes(searchQuery) || p.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Top Banner: Taraweeh Context */}
-      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-[#0d2a25] via-[#071916] to-[#0d2a25] border border-[#d4af37]/30 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center text-[#fef08a]">
-            <Moon className="w-6 h-6 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-md bg-[#d4af37]/20 text-[#fef08a] font-black border border-[#d4af37]/40">
-                الليلة {activeRamadanDay} من رمضان
-              </span>
-              <h2 className="text-lg sm:text-xl font-bold text-[#fef08a]">
-                تسجيل حضور صلاة التراويح
-              </h2>
-            </div>
-            <p className="text-xs text-[#94a3b8] mt-0.5">
-              يمرر الشاب بطاقته أمام الكاميرا لتسجيل حضوره في ثانية واحدة قبل بدء الصلاة
-            </p>
+    <div className="max-w-md mx-auto px-4 pt-2 pb-24 flex flex-col items-center">
+      {/* Dynamic Island / Floating Scanned Alert */}
+      {lastScanned && (
+        <div
+          className={`fixed top-14 z-50 px-4 py-2.5 rounded-full ios-glass shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-top duration-300 ${
+            lastScanned.success ? 'border-emerald-500/30' : 'border-amber-500/30'
+          }`}
+        >
+          {lastScanned.success ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          )}
+          <div className="text-right">
+            <span className="text-xs font-bold text-white block">
+              {lastScanned.name || 'تنبيه'}
+            </span>
+            <span className="text-[11px] text-white/70 block">
+              {lastScanned.message}
+            </span>
           </div>
         </div>
+      )}
 
-        {/* Counter & Enter Prayer button */}
-        <div className="flex items-center gap-4 bg-[#061412] px-4 py-2.5 rounded-xl border border-[#d4af37]/20">
-          <div className="text-center">
-            <span className="text-2xl font-black text-[#fef08a]">{sessionCount}</span>
-            <span className="block text-[11px] text-[#94a3b8]">حضور الليلة</span>
-          </div>
-          <button
-            onClick={onDoneForPrayer}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#6ee7b7] border border-[#10b981]/40 text-xs font-bold transition-all shadow-md cursor-pointer"
-            title="الانتقال إلى الصلاة وإغلاق الماسح"
-          >
-            <span>بدء صلاة التراويح 🕌</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      {/* Floating Status Pill */}
+      <div className="flex items-center gap-2 mb-4 bg-white/[0.06] border border-white/10 px-4 py-1.5 rounded-full text-xs font-medium backdrop-blur-md">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="text-white/80">حضور الليلة {activeRamadanDay}:</span>
+        <strong className="text-[#f5d77f] font-bold text-sm">{sessionCount}</strong>
+        <span className="text-white/40">مصلٍ</span>
       </div>
 
-      {/* Main Scanner Section */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Column: Camera View */}
-        <div className="md:col-span-7 flex flex-col items-center">
-          <div className="w-full relative rounded-2xl overflow-hidden bg-[#071916] border-2 border-[#d4af37]/40 shadow-2xl p-3 flex flex-col items-center">
-            {/* Camera Box */}
-            <div
-              id="qr-reader"
-              className="w-full aspect-square max-w-[340px] rounded-xl overflow-hidden bg-black/60 relative border border-[#d4af37]/20 flex items-center justify-center text-center p-2"
-            >
-              {!isScanning && (
-                <div className="text-center p-4">
-                  <Camera className="w-12 h-12 text-[#d4af37]/40 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-[#cbd5e1]">الكاميرا متوقفة حالياً</p>
-                  <p className="text-xs text-[#94a3b8] mt-1">
-                    اضغط أدناه لفتح الكاميرا ومسح بطاقات الشباب قبل الصلاة
-                  </p>
-                </div>
-              )}
+      {/* Apple-style Camera Viewport Card */}
+      <div className="w-full relative aspect-square max-w-[340px] rounded-[36px] overflow-hidden bg-black/80 border border-white/10 shadow-2xl flex items-center justify-center">
+        <div id="qr-reader" className="w-full h-full object-cover" />
+
+        {/* Reticle Overlay when scanning */}
+        {isScanning && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="w-56 h-56 rounded-3xl border-2 border-[#f5d77f]/40 relative">
+              <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-[#f5d77f] rounded-tr-xl" />
+              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-[#f5d77f] rounded-tl-xl" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-[#f5d77f] rounded-br-xl" />
+              <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-[#f5d77f] rounded-bl-xl" />
             </div>
+          </div>
+        )}
 
-            {/* Camera Controls */}
-            <div className="w-full flex items-center justify-center gap-3 mt-4">
-              {!isScanning ? (
-                <button
-                  onClick={startCamera}
-                  className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#fef08a] to-[#d4af37] text-[#061412] font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg hover:brightness-105 active:scale-95 transition-all cursor-pointer"
-                >
-                  <Camera className="w-5 h-5" />
-                  <span>تشغيل كاميرا مسح التراويح</span>
-                </button>
-              ) : (
-                <button
-                  onClick={stopCamera}
-                  className="w-full py-3 px-6 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <span>إيقاف الكاميرا</span>
-                </button>
-              )}
+        {/* Placeholder state when camera is paused */}
+        {!isScanning && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/60 backdrop-blur-sm">
+            <div className="w-16 h-16 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center mb-3">
+              <Camera className="w-8 h-8 text-white/40" />
             </div>
-
-            {cameraError && (
-              <div className="w-full mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-                {cameraError}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Live Status & Fast Fallback */}
-        <div className="md:col-span-5 flex flex-col gap-4">
-          {/* Latest Scan Notification Box */}
-          <div className="p-4 rounded-2xl bg-[#071916] border border-[#d4af37]/30 shadow-lg min-h-[160px] flex flex-col justify-center">
-            <span className="text-xs text-[#94a3b8] font-semibold mb-2 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-[#d4af37]" />
-              آخر عملية تسجيل في تراويح الليلة:
-            </span>
-
-            {lastScanned ? (
-              <div
-                className={`p-3.5 rounded-xl border transition-all ${
-                  lastScanned.success
-                    ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-100'
-                    : 'bg-amber-950/40 border-amber-500/50 text-amber-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  {lastScanned.success ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-6 h-6 text-amber-400 shrink-0" />
-                  )}
-                  <div>
-                    {lastScanned.name && (
-                      <h4 className="font-bold text-sm text-[#fef08a]">{lastScanned.name}</h4>
-                    )}
-                    <p className="text-xs mt-0.5 leading-relaxed">{lastScanned.message}</p>
-                    <span className="text-[10px] opacity-70 block mt-1">{lastScanned.time}</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 text-xs text-[#94a3b8]">
-                لم يتم تسجيل أي متسابق في الليلة {activeRamadanDay} حتى الآن. وجّه البطاقة نحو الكاميرا ليتم تسجيله في لحظة.
-              </div>
-            )}
-          </div>
-
-          {/* Quick Manual Fallback */}
-          <div className="p-4 rounded-2xl bg-[#071916] border border-[#d4af37]/20 shadow-lg">
-            <h3 className="text-xs font-bold text-[#fef08a] mb-2 flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4 text-[#d4af37]" />
-              تحضير سريع (لمن نسي بطاقته الليلة):
-            </h3>
-            <p className="text-[11px] text-[#94a3b8] mb-3">
-              اضغط على تحضير بجانب اسم الشاب لتسجيله دون الحاجة للكاميرا:
+            <p className="text-sm font-semibold text-white/90">الكاميرا متوقفة</p>
+            <p className="text-xs text-white/50 mt-1 max-w-[200px]">
+              شغّل الكاميرا للمسح التلقائي السريع لبطاقات المصلين
             </p>
+          </div>
+        )}
+      </div>
 
-            <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 text-xs">
-              {participants.map((p) => {
+      {cameraError && (
+        <p className="text-xs text-amber-300 mt-3 text-center px-4">
+          {cameraError}
+        </p>
+      )}
+
+      {/* Action Buttons (Apple Pill Style) */}
+      <div className="w-full max-w-[340px] flex flex-col gap-2.5 mt-5">
+        {!isScanning ? (
+          <button
+            onClick={startCamera}
+            className="w-full py-3.5 rounded-full apple-gold-bg font-bold text-sm tracking-tight flex items-center justify-center gap-2 shadow-xl hover:brightness-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <Camera className="w-4 h-4" />
+            <span>تشغيل الكاميرا</span>
+          </button>
+        ) : (
+          <button
+            onClick={stopCamera}
+            className="w-full py-3.5 rounded-full bg-white/[0.08] hover:bg-white/[0.12] active:scale-95 text-white/80 font-semibold text-sm border border-white/10 transition-all cursor-pointer"
+          >
+            إيقاف الكاميرا
+          </button>
+        )}
+
+        {/* Enter Prayer Button */}
+        <button
+          onClick={onDoneForPrayer}
+          className="w-full py-3 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/20 text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <span>حان وقت الصلاة 🕌</span>
+        </button>
+
+        {/* Manual Check-in Opener */}
+        <button
+          onClick={() => setShowManualSheet(true)}
+          className="w-full py-2.5 rounded-full text-white/50 hover:text-white/80 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>تحضير يدوي (لمن نسي بطاقته)</span>
+        </button>
+      </div>
+
+      {/* iOS Bottom Sheet Modal for Manual Check-in */}
+      {showManualSheet && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md max-h-[80vh] rounded-t-[32px] sm:rounded-[32px] bg-[#121a17] border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
+            {/* Sheet Handle */}
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2" />
+
+            {/* Header */}
+            <div className="px-5 py-2 flex items-center justify-between border-b border-white/5">
+              <h3 className="text-sm font-bold text-white">التحضير اليدوي</h3>
+              <button
+                onClick={() => setShowManualSheet(false)}
+                className="p-1 rounded-full bg-white/10 text-white/60 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search Box */}
+            <div className="p-3">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
+                <input
+                  type="text"
+                  placeholder="بحث باسم المتسابق..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full py-2 pr-9 pl-4 bg-white/[0.06] border border-white/10 rounded-xl text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#f5d77f]"
+                />
+              </div>
+            </div>
+
+            {/* Participants List */}
+            <div className="overflow-y-auto p-3 space-y-1.5 flex-1 max-h-[45vh]">
+              {filteredParticipants.map((p) => {
                 const isPresent = getStoredAttendance().some(
                   a => a.participantId === p.id && a.ramadanDay === activeRamadanDay
                 );
@@ -285,23 +292,23 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-[#061412] border border-[#d4af37]/15 hover:border-[#d4af37]/40 transition-all"
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/15 transition-all"
                   >
                     <div>
-                      <span className="font-semibold text-[#f8fafc]">{p.name}</span>
-                      <span className="text-[10px] text-[#94a3b8] block">({p.id} - {p.category})</span>
+                      <span className="text-xs font-bold text-white block">{p.name}</span>
+                      <span className="text-[10px] text-white/40">{p.id} • {p.category}</span>
                     </div>
 
                     {isPresent ? (
-                      <span className="text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                        ✓ حاضر التراويح
+                      <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                        ✓ حاضر
                       </span>
                     ) : (
                       <button
                         onClick={() => processCode(p.id)}
-                        className="text-[11px] px-3 py-1 rounded bg-[#d4af37]/20 hover:bg-[#d4af37]/30 text-[#fef08a] border border-[#d4af37]/40 font-bold transition-all cursor-pointer"
+                        className="text-[11px] px-3.5 py-1 rounded-full bg-[#f5d77f] text-black font-bold active:scale-95 transition-all cursor-pointer"
                       >
-                        + تحضير
+                        تحضير
                       </button>
                     )}
                   </div>
@@ -310,7 +317,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
