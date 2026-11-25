@@ -189,10 +189,14 @@ export function App() {
 
   // Add Participant
   const handleAddParticipant = async (p: Participant) => {
-    const updated = [...participants, p];
+    try {
+      await saveParticipantToCloud(p);
+    } catch (e) {
+      console.error('Failed to save to cloud:', e);
+    }
+    const updated = [...participants.filter((x) => x.id !== p.id), p];
     setParticipants(updated);
     saveParticipants(updated);
-    saveParticipantToCloud(p).catch(console.error);
   };
 
   // Bulk Add Participants
