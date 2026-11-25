@@ -25,6 +25,17 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+// Helper to remove any undefined fields before sending to Firestore
+function cleanObject(obj: Record<string, any>) {
+  const result: Record<string, any> = {};
+  for (const key of Object.keys(obj)) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
+
 // Firestore Collections
 export const participantsCol = collection(db, 'participants');
 export const attendanceCol = collection(db, 'attendance');
@@ -89,7 +100,16 @@ export async function getParticipantFromCloud(id: string): Promise<Participant |
 export async function saveParticipantToCloud(participant: Participant) {
   const cleanId = participant.id.trim().toUpperCase();
   const pRef = doc(db, 'participants', cleanId);
-  await setDoc(pRef, { ...participant, id: cleanId }, { merge: true });
+  const data = cleanObject({
+    id: cleanId,
+    name: participant.name.trim(),
+    category: participant.category,
+    guardianPhone: participant.guardianPhone?.trim() || null,
+    phone: participant.phone?.trim() || null,
+    notes: participant.notes?.trim() || null,
+    createdAt: participant.createdAt || new Date().toISOString(),
+  });
+  await setDoc(pRef, data, { merge: true });
 }
 
 // Delete a Participant
@@ -102,7 +122,14 @@ export async function deleteParticipantFromCloud(participantId: string) {
 // Record Attendance
 export async function recordAttendanceToCloud(record: AttendanceRecord) {
   const aRef = doc(db, 'attendance', record.id);
-  await setDoc(aRef, record);
+  const data = cleanObject({
+    id: record.id,
+    participantId: record.participantId.trim().toUpperCase(),
+    ramadanDay: record.ramadanDay,
+    date: record.date,
+    timestamp: record.timestamp,
+  });
+  await setDoc(aRef, data);
 }
 
 // Remove Attendance (toggle)
@@ -117,7 +144,16 @@ export async function batchAddParticipantsToCloud(participants: Participant[]) {
   participants.forEach((p) => {
     const cleanId = p.id.trim().toUpperCase();
     const pRef = doc(db, 'participants', cleanId);
-    batch.set(pRef, { ...p, id: cleanId }, { merge: true });
+    const data = cleanObject({
+      id: cleanId,
+      name: p.name.trim(),
+      category: p.category,
+      guardianPhone: p.guardianPhone?.trim() || null,
+      phone: p.phone?.trim() || null,
+      notes: p.notes?.trim() || null,
+      createdAt: p.createdAt || new Date().toISOString(),
+    });
+    batch.set(pRef, data, { merge: true });
   });
   await batch.commit();
 }

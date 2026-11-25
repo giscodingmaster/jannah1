@@ -48,7 +48,7 @@ export const ParticipantsView: React.FC<ParticipantsViewProps> = ({
       id: newId,
       name: name.trim(),
       category,
-      guardianPhone: guardianPhone.trim() || undefined,
+      guardianPhone: guardianPhone.trim() || '',
       createdAt: new Date().toISOString(),
     };
 

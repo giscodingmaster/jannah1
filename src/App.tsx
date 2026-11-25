@@ -191,31 +191,42 @@ export function App() {
   const handleAddParticipant = async (p: Participant) => {
     try {
       await saveParticipantToCloud(p);
-    } catch (e) {
+      const updated = [...participants.filter((x) => x.id !== p.id), p];
+      setParticipants(updated);
+      saveParticipants(updated);
+    } catch (e: any) {
       console.error('Failed to save to cloud:', e);
+      alert('تعذر الحفظ في فايربيز: ' + (e?.message || e));
     }
-    const updated = [...participants.filter((x) => x.id !== p.id), p];
-    setParticipants(updated);
-    saveParticipants(updated);
   };
 
   // Bulk Add Participants
   const handleBulkAddParticipants = async (newEntries: Participant[]) => {
-    const updated = [...participants, ...newEntries];
-    setParticipants(updated);
-    saveParticipants(updated);
-    batchAddParticipantsToCloud(newEntries).catch(console.error);
+    try {
+      await batchAddParticipantsToCloud(newEntries);
+      const updated = [...participants, ...newEntries];
+      setParticipants(updated);
+      saveParticipants(updated);
+    } catch (e: any) {
+      console.error('Failed to batch save to cloud:', e);
+      alert('تعذر الحفظ في فايربيز: ' + (e?.message || e));
+    }
   };
 
   // Delete Participant
   const handleDeleteParticipant = async (id: string) => {
-    const updatedP = participants.filter((p) => p.id !== id);
-    const updatedA = attendance.filter((a) => a.participantId !== id);
-    setParticipants(updatedP);
-    setAttendance(updatedA);
-    saveParticipants(updatedP);
-    saveAttendance(updatedA);
-    deleteParticipantFromCloud(id).catch(console.error);
+    try {
+      await deleteParticipantFromCloud(id);
+      const updatedP = participants.filter((p) => p.id !== id);
+      const updatedA = attendance.filter((a) => a.participantId !== id);
+      setParticipants(updatedP);
+      setAttendance(updatedA);
+      saveParticipants(updatedP);
+      saveAttendance(updatedA);
+    } catch (e: any) {
+      console.error('Failed to delete from cloud:', e);
+      alert('تعذر الحذف من فايربيز: ' + (e?.message || e));
+    }
   };
 
   // Clear Attendance
